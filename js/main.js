@@ -22,10 +22,17 @@ let orientation = 0;
 let numberOfRays = 500;
 const wallHeight = 10;
 const limits = [
+  // Boundary walls
   [{ x: 0, y: 0 }, { x: canvas.width, y: 0 }],
   [{ x: canvas.width, y: 0 }, { x: canvas.width, y: canvas.height }],
   [{ x: canvas.width, y: canvas.height }, { x: 0, y: canvas.height }],
   [{ x: 0, y: canvas.height }, { x: 0, y: 0 }],
+  // Interior walls
+  [{ x: 150, y: 100 }, { x: 150, y: 300 }],
+  [{ x: 300, y: 200 }, { x: 500, y: 200 }],
+  [{ x: 400, y: 350 }, { x: 400, y: 550 }],
+  [{ x: 100, y: 450 }, { x: 350, y: 450 }],
+  [{ x: 450, y: 100 }, { x: 550, y: 250 }],
 ];
 
 function createOffscreenCanvas(width, height) {
@@ -96,25 +103,27 @@ function drawView(context, x, y, orientation, fov) {
     const rayAngle = orientation - fov / 2 + (i * fov / (numberOfRays - 1));
     const px = x + Math.cos(rayAngle) * fovIndicatorLength;
     const py = y + Math.sin(rayAngle) * fovIndicatorLength;
+    let minDist = Infinity;
     for (let j = 0; j < limits.length; j++) {
       const limit = limits[j];
       const intersection = intersect(x, y, px, py, limit[0].x, limit[0].y, limit[1].x, limit[1].y)
       if (intersection) {
         const dist = distance(x, y, intersection.x, intersection.y) * Math.cos(rayAngle - orientation);
-        // const contextualWallHeight = canvas.height * 100 / dist;
-        const contextualWallHeight = wallHeight * fov * 5000 / dist;
-        const colorVal = map(Math.pow(dist, 0.5), 0, Math.pow(fovIndicatorLength, 0.5), 0, 255) | 0;
-        const color = (255 - colorVal).toString(16).padStart(2, '0');
-        µ.rectangle({
-          context: context2,
-          x: i * canvas2.width / numberOfRays,
-          y: (canvas.height / 2) - (contextualWallHeight / 2),
-          width: canvas2.width / numberOfRays,
-          height: contextualWallHeight,
-          color: `#${color}${color}${color}`
-        });
-        break;
+        if (dist < minDist) minDist = dist;
       }
+    }
+    if (minDist < Infinity) {
+      const contextualWallHeight = wallHeight * fov * 5000 / minDist;
+      const colorVal = map(Math.pow(minDist, 0.5), 0, Math.pow(fovIndicatorLength, 0.5), 0, 255) | 0;
+      const color = (255 - colorVal).toString(16).padStart(2, '0');
+      µ.rectangle({
+        context: context2,
+        x: i * canvas2.width / numberOfRays,
+        y: (canvas.height / 2) - (contextualWallHeight / 2),
+        width: canvas2.width / numberOfRays,
+        height: contextualWallHeight,
+        color: `#${color}${color}${color}`
+      });
     }
   }
 }
