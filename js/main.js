@@ -36,10 +36,10 @@ function createOffscreenCanvas(width, height) {
 }
 
 function drawFovIndicator(offscreenContext, x, y, direction, fov) {
-  const px1 = x + Math.cos(orientation - fov / 2) * fovIndicatorLength;
-  const py1 = y + Math.sin(orientation - fov / 2) * fovIndicatorLength;
-  const px2 = x + Math.cos(orientation + fov / 2) * fovIndicatorLength;
-  const py2 = y + Math.sin(orientation + fov / 2) * fovIndicatorLength;
+  const px1 = x + Math.cos(direction - fov / 2) * fovIndicatorLength;
+  const py1 = y + Math.sin(direction - fov / 2) * fovIndicatorLength;
+  const px2 = x + Math.cos(direction + fov / 2) * fovIndicatorLength;
+  const py2 = y + Math.sin(direction + fov / 2) * fovIndicatorLength;
 
   µ.clear(offscreenCanvas.fovIndicator.canvas, offscreenCanvas.fovIndicator.context);
   µ.dashedLine({ context: offscreenCanvas.fovIndicator.context, x1: x, y1: y, x2: px1, y2: py1, color: '#00000055' });
