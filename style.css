@@ -4,9 +4,12 @@ body {
 
 .canvas {
   background-color: #fff;
-  width: 600px;
   height: 600px;
   cursor: none;
+}
+
+#canvas {
+  width: 600px;
 }
 
 #canvas2 {
