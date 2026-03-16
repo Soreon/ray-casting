@@ -121,14 +121,20 @@ function drawView(context, x, y, orientation, fov) {
   }
 }
 
-function drawLimits() { 
+function drawLimits() {
   for (let i = 0; i < limits.length; i++) {
     const limit = limits[i];
-    
+    µ.line({
+      context,
+      x1: limit[0].x, y1: limit[0].y,
+      x2: limit[1].x, y2: limit[1].y,
+      color: '#333',
+    });
   }
 }
 
 function draw() {
+  drawLimits();
   context.drawImage(offscreenCanvas.fovIndicator.canvas, 0, 0);
 }
 
