@@ -1,6 +1,6 @@
 /* eslint-disable object-curly-newline */
 
-import * as µ from './canveas.js';
+import * as µ from './canvas.js';
 
 const canvas = document.getElementById('canvas');
 const context = canvas.getContext('2d');
