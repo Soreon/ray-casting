@@ -4,7 +4,10 @@ import * as µ from './canvas.js';
 
 const canvas = document.getElementById('canvas');
 const context = canvas.getContext('2d');
-const { left, top } = canvas.getBoundingClientRect();
+function getCanvasOffset() {
+  const rect = canvas.getBoundingClientRect();
+  return { left: rect.left, top: rect.top };
+}
 const canvas2 = document.getElementById('canvas2');
 const context2 = canvas2.getContext('2d');
 let shiftPressed = false;
@@ -136,6 +139,7 @@ function animate() {
 }
 
 canvas.addEventListener('mousemove', event => {
+  const { left, top } = getCanvasOffset();
   const x = event.clientX - left;
   const y = event.clientY - top;
   drawFovIndicator(offscreenCanvas.fovIndicator.context, x, y, orientation, fov);
@@ -163,6 +167,7 @@ canvas.addEventListener('wheel', event => {
       orientation += Math.PI / 24
     }
   }
+  const { left, top } = getCanvasOffset();
   const x = event.clientX - left;
   const y = event.clientY - top;
   drawFovIndicator(offscreenCanvas.fovIndicator.context, x, y, orientation, fov);
