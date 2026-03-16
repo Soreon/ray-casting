@@ -56,6 +56,7 @@ export function dashedLine({
 } = {}) {
   context.setLineDash([2, 3]);
   line({ context, x1, y1, x2, y2, color });
+  context.setLineDash([]);
 }
 
 export function rectangle({
