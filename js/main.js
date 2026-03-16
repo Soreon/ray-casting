@@ -146,8 +146,8 @@ canvas.addEventListener('mouseleave', event => {
   µ.clear(offscreenCanvas.fovIndicator.canvas, offscreenCanvas.fovIndicator.context);
 })
 
-canvas.addEventListener('mousewheel', event => {
-  const delta = Math.max(-1, Math.min(1, (event.wheelDelta || -event.detail)));
+canvas.addEventListener('wheel', event => {
+  const delta = -Math.sign(event.deltaY);
   if (delta > 0) {
     if (shiftPressed) {
       fov += Math.PI / 24
