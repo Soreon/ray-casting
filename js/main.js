@@ -58,9 +58,6 @@ function distance(x1, y1, x2, y2) {
   return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2))
 }
 
-function normalDistance(x1, y1, x2, y2) {
-  return Math.max(distance(x1, y1, x1, y2), distance(x1, y1, x2, y1))
-}
 
 const map = (value, x1, y1, x2, y2) => (value - x1) * (y2 - x2) / (y1 - x1) + x2;
 
@@ -96,13 +93,14 @@ function intersect(x1, y1, x2, y2, x3, y3, x4, y4) {
 function drawView(context, x, y, orientation, fov) {
   µ.clear(canvas2, context2);
   for (let i = 0; i < numberOfRays; i++) {
-    const px = x + Math.cos(orientation - fov / 2 + (i * fov / (numberOfRays - 1))) * fovIndicatorLength;
-    const py = y + Math.sin(orientation - fov / 2 + (i * fov / (numberOfRays - 1))) * fovIndicatorLength;
+    const rayAngle = orientation - fov / 2 + (i * fov / (numberOfRays - 1));
+    const px = x + Math.cos(rayAngle) * fovIndicatorLength;
+    const py = y + Math.sin(rayAngle) * fovIndicatorLength;
     for (let j = 0; j < limits.length; j++) {
       const limit = limits[j];
       const intersection = intersect(x, y, px, py, limit[0].x, limit[0].y, limit[1].x, limit[1].y)
       if (intersection) {
-        const dist = distance(x, y, intersection.x, intersection.y);
+        const dist = distance(x, y, intersection.x, intersection.y) * Math.cos(rayAngle - orientation);
         // const contextualWallHeight = canvas.height * 100 / dist;
         const contextualWallHeight = wallHeight * fov * 5000 / dist;
         const colorVal = map(Math.pow(dist, 0.5), 0, Math.pow(fovIndicatorLength, 0.5), 0, 255) | 0;
