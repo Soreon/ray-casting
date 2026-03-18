@@ -98,8 +98,24 @@ function intersect(x1, y1, x2, y2, x3, y3, x4, y4) {
   return { x, y }
 }
 
+function drawSkyAndFloor() {
+  const midY = canvas2.height / 2;
+  const sky = context2.createLinearGradient(0, 0, 0, midY);
+  sky.addColorStop(0, '#0b1a3e');
+  sky.addColorStop(1, '#3a7bd5');
+  context2.fillStyle = sky;
+  context2.fillRect(0, 0, canvas2.width, midY);
+
+  const floor = context2.createLinearGradient(0, midY, 0, canvas2.height);
+  floor.addColorStop(0, '#4a4a4a');
+  floor.addColorStop(1, '#1a1a1a');
+  context2.fillStyle = floor;
+  context2.fillRect(0, midY, canvas2.width, midY);
+}
+
 function drawView(context, x, y, orientation, fov) {
   µ.clear(canvas2, context2);
+  drawSkyAndFloor();
   const projDist = (numberOfRays / 2) / Math.tan(fov / 2);
   for (let i = 0; i < numberOfRays; i++) {
     const screenX = i - (numberOfRays - 1) / 2;
