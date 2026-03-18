@@ -7,59 +7,74 @@ const context = canvas.getContext('2d');
 const canvas2 = document.getElementById('canvas2');
 const context2 = canvas2.getContext('2d');
 
-let playerX = canvas.width / 2;
-let playerY = canvas.height / 2;
+const CELL = 64;
+const grid = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1],
+  [1,1,1,1,1,0,0,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1],
+  [1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,1,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,1,1,1,0,1],
+  [1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1],
+  [1,0,0,0,1,0,0,0,0,0,0,0,1,1,1,0,0,0,0,1,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+];
+
+function generateWalls(grid) {
+  const walls = [];
+  const rows = grid.length, cols = grid[0].length;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (grid[r][c] === 0) continue;
+      const x = c * CELL, y = r * CELL;
+      if (r === 0 || grid[r - 1][c] === 0) walls.push([{ x, y }, { x: x + CELL, y }]);
+      if (r === rows - 1 || grid[r + 1][c] === 0) walls.push([{ x, y: y + CELL }, { x: x + CELL, y: y + CELL }]);
+      if (c === 0 || grid[r][c - 1] === 0) walls.push([{ x, y }, { x, y: y + CELL }]);
+      if (c === cols - 1 || grid[r][c + 1] === 0) walls.push([{ x: x + CELL, y }, { x: x + CELL, y: y + CELL }]);
+    }
+  }
+  return walls;
+}
+
+const limits = generateWalls(grid);
+const mapWidth = grid[0].length * CELL;
+const mapHeight = grid.length * CELL;
+
+let playerX = 1.5 * CELL;
+let playerY = 1.5 * CELL;
 const moveSpeed = 3;
 const rotSpeed = Math.PI / 48;
 const keys = {};
 
-const offscreenCanvas = {
-  fovIndicator: createOffscreenCanvas(canvas.width, canvas.height)
-}
-
 let fov = Math.PI / 2;
-const fovIndicatorLength = Math.sqrt(Math.pow(canvas.width, 2) + Math.pow(canvas.height, 2));
+const maxRayLength = Math.sqrt(mapWidth * mapWidth + mapHeight * mapHeight);
 let orientation = 0;
 let numberOfRays = 500;
 const wallHeight = 10;
-const limits = [
-  // Boundary walls
-  [{ x: 0, y: 0 }, { x: canvas.width, y: 0 }],
-  [{ x: canvas.width, y: 0 }, { x: canvas.width, y: canvas.height }],
-  [{ x: canvas.width, y: canvas.height }, { x: 0, y: canvas.height }],
-  [{ x: 0, y: canvas.height }, { x: 0, y: 0 }],
-  // Interior walls
-  [{ x: 150, y: 100 }, { x: 150, y: 300 }],
-  [{ x: 300, y: 200 }, { x: 500, y: 200 }],
-  [{ x: 400, y: 350 }, { x: 400, y: 550 }],
-  [{ x: 100, y: 450 }, { x: 350, y: 450 }],
-  [{ x: 450, y: 100 }, { x: 550, y: 250 }],
-];
 
-function createOffscreenCanvas(width, height) {
-  const offscreenCanvas = document.createElement('canvas')
-  offscreenCanvas.width = width
-  offscreenCanvas.height = height
-  return {
-    canvas: offscreenCanvas,
-    context: offscreenCanvas.getContext('2d')
-  }
-}
-
-function drawFovIndicator(offscreenContext, x, y, direction, fov) {
-  const px1 = x + Math.cos(direction - fov / 2) * fovIndicatorLength;
-  const py1 = y + Math.sin(direction - fov / 2) * fovIndicatorLength;
-  const px2 = x + Math.cos(direction + fov / 2) * fovIndicatorLength;
-  const py2 = y + Math.sin(direction + fov / 2) * fovIndicatorLength;
-
-  µ.clear(offscreenCanvas.fovIndicator.canvas, offscreenCanvas.fovIndicator.context);
-  µ.dashedLine({ context: offscreenCanvas.fovIndicator.context, x1: x, y1: y, x2: px1, y2: py1, color: '#00000055' });
-  // for (let i = 1; i < numberOfRays - 1; i++) {
-  //   const pix = x + Math.cos(orientation - fov / 2 + (i * fov / (numberOfRays - 1))) * fovIndicatorLength;
-  //   const piy = y + Math.sin(orientation - fov / 2 + (i * fov / (numberOfRays - 1))) * fovIndicatorLength;
-  //   µ.dashedLine({ context: offscreenCanvas.fovIndicator.context, x1: x, y1: y, x2: pix, y2: piy, color: '#00000011' });
-  // }
-  µ.dashedLine({ context: offscreenCanvas.fovIndicator.context, x1: x, y1: y, x2: px2, y2: py2, color: '#00000055' });
+function drawFovIndicator(ctx, x, y, direction, fov, scale) {
+  const len = 300 * scale;
+  const px1 = x + Math.cos(direction - fov / 2) * len;
+  const py1 = y + Math.sin(direction - fov / 2) * len;
+  const px2 = x + Math.cos(direction + fov / 2) * len;
+  const py2 = y + Math.sin(direction + fov / 2) * len;
+  µ.dashedLine({ context: ctx, x1: x, y1: y, x2: px1, y2: py1, color: '#00000055' });
+  µ.dashedLine({ context: ctx, x1: x, y1: y, x2: px2, y2: py2, color: '#00000055' });
 }
 
 function distance(x1, y1, x2, y2) {
@@ -120,8 +135,8 @@ function drawView(context, x, y, orientation, fov) {
   for (let i = 0; i < numberOfRays; i++) {
     const screenX = i - (numberOfRays - 1) / 2;
     const rayAngle = orientation + Math.atan2(screenX, projDist);
-    const px = x + Math.cos(rayAngle) * fovIndicatorLength;
-    const py = y + Math.sin(rayAngle) * fovIndicatorLength;
+    const px = x + Math.cos(rayAngle) * maxRayLength;
+    const py = y + Math.sin(rayAngle) * maxRayLength;
     let minDist = Infinity;
     for (let j = 0; j < limits.length; j++) {
       const limit = limits[j];
@@ -133,7 +148,7 @@ function drawView(context, x, y, orientation, fov) {
     }
     if (minDist < Infinity) {
       const contextualWallHeight = wallHeight * fov * 5000 / minDist;
-      const colorVal = map(Math.pow(minDist, 0.5), 0, Math.pow(fovIndicatorLength, 0.5), 0, 255) | 0;
+      const colorVal = map(Math.pow(minDist, 0.5), 0, Math.pow(maxRayLength, 0.5), 0, 255) | 0;
       const color = (255 - colorVal).toString(16).padStart(2, '0');
       µ.rectangle({
         context: context2,
@@ -149,19 +164,14 @@ function drawView(context, x, y, orientation, fov) {
 
 function canMoveTo(newX, newY) {
   const margin = 5;
-  for (const limit of limits) {
-    const closest = closestPointOnSegment(newX, newY, limit[0].x, limit[0].y, limit[1].x, limit[1].y);
-    if (distance(newX, newY, closest.x, closest.y) < margin) return false;
+  const c1 = Math.floor((newX - margin) / CELL), c2 = Math.floor((newX + margin) / CELL);
+  const r1 = Math.floor((newY - margin) / CELL), r2 = Math.floor((newY + margin) / CELL);
+  for (let r = r1; r <= r2; r++) {
+    for (let c = c1; c <= c2; c++) {
+      if (r < 0 || r >= grid.length || c < 0 || c >= grid[0].length || grid[r][c] === 1) return false;
+    }
   }
   return true;
-}
-
-function closestPointOnSegment(px, py, x1, y1, x2, y2) {
-  const dx = x2 - x1, dy = y2 - y1;
-  const len2 = dx * dx + dy * dy;
-  if (len2 === 0) return { x: x1, y: y1 };
-  const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / len2));
-  return { x: x1 + t * dx, y: y1 + t * dy };
 }
 
 function updatePlayer() {
@@ -188,29 +198,36 @@ function updatePlayer() {
   }
 }
 
-function drawLimits() {
-  for (let i = 0; i < limits.length; i++) {
-    const limit = limits[i];
-    µ.line({
-      context,
-      x1: limit[0].x, y1: limit[0].y,
-      x2: limit[1].x, y2: limit[1].y,
-      color: '#333',
-    });
-  }
-}
+function drawMinimap() {
+  const scale = canvas.width / (12 * CELL);
+  context.save();
+  context.translate(canvas.width / 2 - playerX * scale, canvas.height / 2 - playerY * scale);
+  context.scale(scale, scale);
 
-function drawPlayer() {
-  µ.circle({ context, x: playerX, y: playerY, radius: 4, color: '#e22' });
+  // Draw grid cells
+  for (let r = 0; r < grid.length; r++) {
+    for (let c = 0; c < grid[0].length; c++) {
+      context.fillStyle = grid[r][c] === 1 ? '#333' : '#ddd';
+      context.fillRect(c * CELL, r * CELL, CELL, CELL);
+    }
+  }
+
+  // Draw FOV indicator
+  drawFovIndicator(context, playerX, playerY, orientation, fov, 1);
+
+  // Draw player
+  context.beginPath();
+  context.arc(playerX, playerY, 6, 0, Math.PI * 2);
+  context.fillStyle = '#e22';
+  context.fill();
+
+  context.restore();
 }
 
 function animate() {
   updatePlayer();
   µ.clear(canvas, context);
-  drawLimits();
-  drawFovIndicator(offscreenCanvas.fovIndicator.context, playerX, playerY, orientation, fov);
-  context.drawImage(offscreenCanvas.fovIndicator.canvas, 0, 0);
-  drawPlayer();
+  drawMinimap();
   drawView(context2, playerX, playerY, orientation, fov);
   requestAnimationFrame(animate);
 }
