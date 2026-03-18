@@ -4,13 +4,14 @@ import * as µ from './canvas.js';
 
 const canvas = document.getElementById('canvas');
 const context = canvas.getContext('2d');
-function getCanvasOffset() {
-  const rect = canvas.getBoundingClientRect();
-  return { left: rect.left, top: rect.top };
-}
 const canvas2 = document.getElementById('canvas2');
 const context2 = canvas2.getContext('2d');
-let shiftPressed = false;
+
+let playerX = canvas.width / 2;
+let playerY = canvas.height / 2;
+const moveSpeed = 3;
+const rotSpeed = Math.PI / 48;
+const keys = {};
 
 const offscreenCanvas = {
   fovIndicator: createOffscreenCanvas(canvas.width, canvas.height)
@@ -130,6 +131,47 @@ function drawView(context, x, y, orientation, fov) {
   }
 }
 
+function canMoveTo(newX, newY) {
+  const margin = 5;
+  for (const limit of limits) {
+    const closest = closestPointOnSegment(newX, newY, limit[0].x, limit[0].y, limit[1].x, limit[1].y);
+    if (distance(newX, newY, closest.x, closest.y) < margin) return false;
+  }
+  return true;
+}
+
+function closestPointOnSegment(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const len2 = dx * dx + dy * dy;
+  if (len2 === 0) return { x: x1, y: y1 };
+  const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / len2));
+  return { x: x1 + t * dx, y: y1 + t * dy };
+}
+
+function updatePlayer() {
+  if (keys['ArrowLeft']) orientation -= rotSpeed;
+  if (keys['ArrowRight']) orientation += rotSpeed;
+  if (keys['ShiftLeft'] || keys['ShiftRight']) {
+    if (keys['ArrowUp']) { fov += Math.PI / 48; fov = Math.min(fov, Math.PI * 2); }
+    if (keys['ArrowDown']) { fov -= Math.PI / 48; fov = Math.max(fov, 0.1); }
+  }
+
+  let dx = 0, dy = 0;
+  if (keys['KeyW']) { dx += Math.cos(orientation); dy += Math.sin(orientation); }
+  if (keys['KeyS']) { dx -= Math.cos(orientation); dy -= Math.sin(orientation); }
+  if (keys['KeyA']) { dx += Math.cos(orientation - Math.PI / 2); dy += Math.sin(orientation - Math.PI / 2); }
+  if (keys['KeyD']) { dx += Math.cos(orientation + Math.PI / 2); dy += Math.sin(orientation + Math.PI / 2); }
+
+  if (dx !== 0 || dy !== 0) {
+    const len = Math.sqrt(dx * dx + dy * dy);
+    const newX = playerX + (dx / len) * moveSpeed;
+    const newY = playerY + (dy / len) * moveSpeed;
+    if (canMoveTo(newX, newY)) { playerX = newX; playerY = newY; }
+    else if (canMoveTo(newX, playerY)) { playerX = newX; }
+    else if (canMoveTo(playerX, newY)) { playerY = newY; }
+  }
+}
+
 function drawLimits() {
   for (let i = 0; i < limits.length; i++) {
     const limit = limits[i];
@@ -142,63 +184,22 @@ function drawLimits() {
   }
 }
 
-function draw() {
-  drawLimits();
-  context.drawImage(offscreenCanvas.fovIndicator.canvas, 0, 0);
+function drawPlayer() {
+  µ.circle({ context, x: playerX, y: playerY, radius: 4, color: '#e22' });
 }
 
 function animate() {
+  updatePlayer();
   µ.clear(canvas, context);
-  draw();
+  drawLimits();
+  drawFovIndicator(offscreenCanvas.fovIndicator.context, playerX, playerY, orientation, fov);
+  context.drawImage(offscreenCanvas.fovIndicator.canvas, 0, 0);
+  drawPlayer();
+  drawView(context2, playerX, playerY, orientation, fov);
   requestAnimationFrame(animate);
 }
 
-canvas.addEventListener('mousemove', event => {
-  const { left, top } = getCanvasOffset();
-  const x = event.clientX - left;
-  const y = event.clientY - top;
-  drawFovIndicator(offscreenCanvas.fovIndicator.context, x, y, orientation, fov);
-  drawView(offscreenCanvas.fovIndicator.context, x, y, orientation, fov);
-})
-
-canvas.addEventListener('mouseleave', event => {
-  µ.clear(offscreenCanvas.fovIndicator.canvas, offscreenCanvas.fovIndicator.context);
-})
-
-canvas.addEventListener('wheel', event => {
-  const delta = -Math.sign(event.deltaY);
-  if (delta > 0) {
-    if (shiftPressed) {
-      fov += Math.PI / 24
-      fov = Math.min(Math.max(0, fov), Math.PI * 2)
-    } else {
-      orientation -= Math.PI / 24
-    }
-  } else {
-    if (shiftPressed) {
-      fov -= Math.PI / 24
-      fov = Math.min(Math.max(0, fov), Math.PI * 2)
-    } else {
-      orientation += Math.PI / 24
-    }
-  }
-  const { left, top } = getCanvasOffset();
-  const x = event.clientX - left;
-  const y = event.clientY - top;
-  drawFovIndicator(offscreenCanvas.fovIndicator.context, x, y, orientation, fov);
-  drawView(offscreenCanvas.fovIndicator.context, x, y, orientation, fov);
-}, { passive: true });
-
-document.addEventListener('keydown', (event) => {
-  if (event.shiftKey) {
-    shiftPressed = true;
-  }
-}, false);
-
-document.addEventListener('keyup', (event) => {
-  shiftPressed = false;
-}, false);
-
-
+document.addEventListener('keydown', (event) => { keys[event.code] = true; });
+document.addEventListener('keyup', (event) => { keys[event.code] = false; });
 
 animate();
