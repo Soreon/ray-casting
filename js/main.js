@@ -99,8 +99,10 @@ function intersect(x1, y1, x2, y2, x3, y3, x4, y4) {
 
 function drawView(context, x, y, orientation, fov) {
   µ.clear(canvas2, context2);
+  const projDist = (numberOfRays / 2) / Math.tan(fov / 2);
   for (let i = 0; i < numberOfRays; i++) {
-    const rayAngle = orientation - fov / 2 + (i * fov / (numberOfRays - 1));
+    const screenX = i - (numberOfRays - 1) / 2;
+    const rayAngle = orientation + Math.atan2(screenX, projDist);
     const px = x + Math.cos(rayAngle) * fovIndicatorLength;
     const py = y + Math.sin(rayAngle) * fovIndicatorLength;
     let minDist = Infinity;
