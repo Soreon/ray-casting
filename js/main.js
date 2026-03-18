@@ -2,10 +2,17 @@
 
 import * as µ from './canvas.js';
 
-const canvas = document.getElementById('canvas');
-const context = canvas.getContext('2d');
 const canvas2 = document.getElementById('canvas2');
 const context2 = canvas2.getContext('2d');
+let numberOfRays;
+
+function resizeCanvas() {
+  canvas2.width = window.innerWidth;
+  canvas2.height = window.innerHeight;
+  numberOfRays = canvas2.width;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
 
 const CELL = 64;
 const grid = [
@@ -64,7 +71,6 @@ const keys = {};
 let fov = Math.PI / 2;
 const maxRayLength = Math.sqrt(mapWidth * mapWidth + mapHeight * mapHeight);
 let orientation = 0;
-let numberOfRays = 500;
 const wallHeight = 10;
 
 function drawFovIndicator(ctx, x, y, direction, fov, scale) {
@@ -153,7 +159,7 @@ function drawView(context, x, y, orientation, fov) {
       µ.rectangle({
         context: context2,
         x: Math.round(i * canvas2.width / numberOfRays),
-        y: (canvas.height / 2) - (contextualWallHeight / 2),
+        y: (canvas2.height / 2) - (contextualWallHeight / 2),
         width: Math.round((i + 1) * canvas2.width / numberOfRays) - Math.round(i * canvas2.width / numberOfRays),
         height: contextualWallHeight,
         color: `#${color}${color}${color}`
@@ -198,48 +204,68 @@ function updatePlayer() {
   }
 }
 
+const minimapRadius = 90;
+const minimapScale = minimapRadius / (5 * CELL);
+
 function drawMinimap() {
-  const scale = canvas.width / (12 * CELL);
-  context.save();
-  context.translate(canvas.width / 2 - playerX * scale, canvas.height / 2 - playerY * scale);
-  context.scale(scale, scale);
+  const ctx = context2;
+  const minimapX = minimapRadius + 15;
+  const minimapY = canvas2.height - minimapRadius - 15;
+  ctx.save();
+
+  // Circular clip
+  ctx.beginPath();
+  ctx.arc(minimapX, minimapY, minimapRadius, 0, Math.PI * 2);
+  ctx.clip();
+
+  // Background
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(minimapX - minimapRadius, minimapY - minimapRadius, minimapRadius * 2, minimapRadius * 2);
+
+  // Center on player, rotate so forward = up
+  ctx.translate(minimapX, minimapY);
+  ctx.rotate(-orientation - Math.PI / 2);
+  ctx.scale(minimapScale, minimapScale);
+  ctx.translate(-playerX, -playerY);
 
   // Draw grid cells
   for (let r = 0; r < grid.length; r++) {
     for (let c = 0; c < grid[0].length; c++) {
-      context.fillStyle = grid[r][c] === 1 ? '#333' : '#ddd';
-      context.fillRect(c * CELL, r * CELL, CELL, CELL);
+      if (grid[r][c] === 1) {
+        ctx.fillStyle = '#555';
+        ctx.fillRect(c * CELL, r * CELL, CELL, CELL);
+      }
     }
   }
 
   // Draw FOV indicator
-  drawFovIndicator(context, playerX, playerY, orientation, fov, 1);
+  drawFovIndicator(ctx, playerX, playerY, orientation, fov, 1);
 
   // Draw player
-  context.beginPath();
-  context.arc(playerX, playerY, 6, 0, Math.PI * 2);
-  context.fillStyle = '#e22';
-  context.fill();
+  ctx.beginPath();
+  ctx.arc(playerX, playerY, 6, 0, Math.PI * 2);
+  ctx.fillStyle = '#e22';
+  ctx.fill();
 
-  context.restore();
+  ctx.restore();
+
+  // Border
+  ctx.beginPath();
+  ctx.arc(minimapX, minimapY, minimapRadius, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
 }
 
 function animate() {
   updatePlayer();
-  µ.clear(canvas, context);
-  drawMinimap();
   drawView(context2, playerX, playerY, orientation, fov);
+  drawMinimap();
   requestAnimationFrame(animate);
 }
 
 document.addEventListener('keydown', (event) => { keys[event.code] = true; });
 document.addEventListener('keyup', (event) => { keys[event.code] = false; });
 
-const resolutionSlider = document.getElementById('resolution');
-const resolutionValue = document.getElementById('resolutionValue');
-resolutionSlider.addEventListener('input', () => {
-  numberOfRays = parseInt(resolutionSlider.value);
-  resolutionValue.textContent = numberOfRays;
-});
 
 animate();
