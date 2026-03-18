@@ -152,9 +152,9 @@ function drawView(context, x, y, orientation, fov) {
       const color = (255 - colorVal).toString(16).padStart(2, '0');
       µ.rectangle({
         context: context2,
-        x: i * canvas2.width / numberOfRays,
+        x: Math.round(i * canvas2.width / numberOfRays),
         y: (canvas.height / 2) - (contextualWallHeight / 2),
-        width: canvas2.width / numberOfRays,
+        width: Math.round((i + 1) * canvas2.width / numberOfRays) - Math.round(i * canvas2.width / numberOfRays),
         height: contextualWallHeight,
         color: `#${color}${color}${color}`
       });
@@ -234,5 +234,12 @@ function animate() {
 
 document.addEventListener('keydown', (event) => { keys[event.code] = true; });
 document.addEventListener('keyup', (event) => { keys[event.code] = false; });
+
+const resolutionSlider = document.getElementById('resolution');
+const resolutionValue = document.getElementById('resolutionValue');
+resolutionSlider.addEventListener('input', () => {
+  numberOfRays = parseInt(resolutionSlider.value);
+  resolutionValue.textContent = numberOfRays;
+});
 
 animate();
