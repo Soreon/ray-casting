@@ -73,6 +73,44 @@ const maxRayLength = Math.sqrt(mapWidth * mapWidth + mapHeight * mapHeight);
 let orientation = 0;
 const wallHeight = 10;
 
+// Lowres mode
+let lowresMode = false;
+const LOWRES_W = 320;
+const LOWRES_H = 200;
+const lowresCanvas = document.createElement('canvas');
+lowresCanvas.width = LOWRES_W;
+lowresCanvas.height = LOWRES_H;
+const lowresCtx = lowresCanvas.getContext('2d');
+
+const NES_PALETTE = [
+  [0,0,0],[252,252,252],[248,248,248],
+  [188,188,188],[124,124,124],[168,0,32],
+  [0,0,252],[0,88,248],[0,168,0],
+  [68,168,0],[184,248,24],[248,88,152],
+  [252,160,68],[228,92,16],[80,48,0],
+  [120,120,120],
+];
+
+function nearestColor(r, g, b) {
+  let best = 0, bestDist = Infinity;
+  for (let i = 0; i < NES_PALETTE.length; i++) {
+    const [pr, pg, pb] = NES_PALETTE[i];
+    const d = (r - pr) ** 2 + (g - pg) ** 2 + (b - pb) ** 2;
+    if (d < bestDist) { bestDist = d; best = i; }
+  }
+  return NES_PALETTE[best];
+}
+
+function quantize(ctx, w, h) {
+  const imageData = ctx.getImageData(0, 0, w, h);
+  const data = imageData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const [r, g, b] = nearestColor(data[i], data[i + 1], data[i + 2]);
+    data[i] = r; data[i + 1] = g; data[i + 2] = b;
+  }
+  ctx.putImageData(imageData, 0, 0);
+}
+
 function drawFovIndicator(ctx, x, y, direction, fov, scale) {
   const len = 300 * scale;
   const px1 = x + Math.cos(direction - fov / 2) * len;
@@ -119,27 +157,27 @@ function intersect(x1, y1, x2, y2, x3, y3, x4, y4) {
   return { x, y }
 }
 
-function drawSkyAndFloor() {
-  const midY = canvas2.height / 2;
-  const sky = context2.createLinearGradient(0, 0, 0, midY);
+function drawSkyAndFloor(ctx, cvs) {
+  const midY = cvs.height / 2;
+  const sky = ctx.createLinearGradient(0, 0, 0, midY);
   sky.addColorStop(0, '#0b1a3e');
   sky.addColorStop(1, '#3a7bd5');
-  context2.fillStyle = sky;
-  context2.fillRect(0, 0, canvas2.width, midY);
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, cvs.width, midY);
 
-  const floor = context2.createLinearGradient(0, midY, 0, canvas2.height);
+  const floor = ctx.createLinearGradient(0, midY, 0, cvs.height);
   floor.addColorStop(0, '#4a4a4a');
   floor.addColorStop(1, '#1a1a1a');
-  context2.fillStyle = floor;
-  context2.fillRect(0, midY, canvas2.width, midY);
+  ctx.fillStyle = floor;
+  ctx.fillRect(0, midY, cvs.width, midY);
 }
 
-function drawView(context, x, y, orientation, fov) {
-  µ.clear(canvas2, context2);
-  drawSkyAndFloor();
-  const projDist = (numberOfRays / 2) / Math.tan(fov / 2);
-  for (let i = 0; i < numberOfRays; i++) {
-    const screenX = i - (numberOfRays - 1) / 2;
+function drawView(ctx, cvs, rays, x, y, orientation, fov) {
+  ctx.clearRect(0, 0, cvs.width, cvs.height);
+  drawSkyAndFloor(ctx, cvs);
+  const projDist = (rays / 2) / Math.tan(fov / 2);
+  for (let i = 0; i < rays; i++) {
+    const screenX = i - (rays - 1) / 2;
     const rayAngle = orientation + Math.atan2(screenX, projDist);
     const px = x + Math.cos(rayAngle) * maxRayLength;
     const py = y + Math.sin(rayAngle) * maxRayLength;
@@ -157,10 +195,10 @@ function drawView(context, x, y, orientation, fov) {
       const colorVal = map(Math.pow(minDist, 0.5), 0, Math.pow(maxRayLength, 0.5), 0, 255) | 0;
       const color = (255 - colorVal).toString(16).padStart(2, '0');
       µ.rectangle({
-        context: context2,
-        x: Math.round(i * canvas2.width / numberOfRays),
-        y: (canvas2.height / 2) - (contextualWallHeight / 2),
-        width: Math.round((i + 1) * canvas2.width / numberOfRays) - Math.round(i * canvas2.width / numberOfRays),
+        context: ctx,
+        x: Math.round(i * cvs.width / rays),
+        y: (cvs.height / 2) - (contextualWallHeight / 2),
+        width: Math.round((i + 1) * cvs.width / rays) - Math.round(i * cvs.width / rays),
         height: contextualWallHeight,
         color: `#${color}${color}${color}`
       });
@@ -259,12 +297,23 @@ function drawMinimap() {
 
 function animate() {
   updatePlayer();
-  drawView(context2, playerX, playerY, orientation, fov);
+  if (lowresMode) {
+    drawView(lowresCtx, lowresCanvas, LOWRES_W, playerX, playerY, orientation, fov);
+    quantize(lowresCtx, LOWRES_W, LOWRES_H);
+    context2.clearRect(0, 0, canvas2.width, canvas2.height);
+    context2.imageSmoothingEnabled = false;
+    context2.drawImage(lowresCanvas, 0, 0, canvas2.width, canvas2.height);
+  } else {
+    drawView(context2, canvas2, numberOfRays, playerX, playerY, orientation, fov);
+  }
   drawMinimap();
   requestAnimationFrame(animate);
 }
 
-document.addEventListener('keydown', (event) => { keys[event.code] = true; });
+document.addEventListener('keydown', (event) => {
+  keys[event.code] = true;
+  if (event.code === 'KeyL') lowresMode = !lowresMode;
+});
 document.addEventListener('keyup', (event) => { keys[event.code] = false; });
 
 
